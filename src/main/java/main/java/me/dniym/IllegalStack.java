@@ -1163,7 +1163,7 @@ public class IllegalStack extends JavaPlugin {
     public static int getMajorServerVersion() {
         try {
             String internalVersion = getVersion();
-            if (internalVersion.startsWith("1.")) {
+            if (internalVersion.startsWith("v1_")) {
                 return Integer.parseInt(internalVersion.split("_")[1]);
             } else {
                 String[] versionParts = internalVersion.replace("v", "").split("_");
