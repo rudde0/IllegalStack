@@ -30,9 +30,7 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
@@ -577,14 +575,7 @@ public class fTimer implements Runnable {
                                 }
                             }
                             PotionMeta potion = (PotionMeta) is.getItemMeta();
-                            PotionData pd = potion.getBasePotionData();
-                            if (pd.getType() == PotionType.UNCRAFTABLE || (potion.hasCustomEffects() && !potion
-                                    .getCustomEffects()
-                                    .isEmpty())) {
-
-                                if (pd.getType() == PotionType.UNCRAFTABLE && potion.getCustomEffects().isEmpty()) {
-                                    continue;
-                                }
+                            if (potion.hasCustomEffects() && !potion.getCustomEffects().isEmpty()) {
 
                                 p.getInventory().remove(is);
                                 StringBuilder efx = new StringBuilder();
