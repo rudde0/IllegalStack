@@ -966,11 +966,32 @@ public class IllegalStack extends JavaPlugin {
     }
 
     private void setVersion() {
+        IllegalStack.version = detectServerVersion();
+    }
 
-        String version = getServer().getClass().getPackage().getName().replace(".", ",").split(",")[3];
+    public static String detectServerVersion() {
+        String[] pkg = Bukkit.getServer().getClass().getPackage().getName().split("\\.");
+        if (pkg.length >= 4 && pkg[3].startsWith("v")) {
+            return getString(pkg[3]);
+        }
 
-        version = getString(version);
-        IllegalStack.version = version;
+        // Paper 1.20.5+ no longer relocates CraftBukkit into a versioned package,
+        // so derive the legacy vX_Y_RZ token from the bukkit version string instead.
+        String[] ver = Bukkit.getBukkitVersion().split("-")[0].split("\\.");
+        String minor = ver.length > 1 ? ver[1] : "0";
+        String patch = ver.length > 2 ? ver[2] : "0";
+        return "v" + ver[0] + "_" + minor + "_R" + patch;
+    }
+
+    public static boolean isAtLeast(int major, int minor) {
+        try {
+            String[] v = getVersion().substring(1).split("_");
+            int maj = Integer.parseInt(v[0]);
+            int min = Integer.parseInt(v[1]);
+            return maj > major || (maj == major && min >= minor);
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
 }

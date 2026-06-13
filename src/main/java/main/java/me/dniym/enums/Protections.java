@@ -5,8 +5,6 @@ import main.java.me.dniym.IllegalStack;
 import main.java.me.dniym.utils.MagicHook;
 import main.java.me.dniym.utils.NBTStuff;
 import main.java.me.dniym.utils.SpigotMethods;
-import me.jet315.minions.MinionAPI;
-import me.jet315.minions.minions.Minion;
 import net.brcdev.shopgui.gui.gui.OpenGui;
 import net.craftingstore.bukkit.inventory.CraftingStoreInventoryHolder;
 import org.apache.logging.log4j.LogManager;
@@ -1590,32 +1588,8 @@ public enum Protections {
     }
 
     private String getServerVersion() {
-        if (serverVersion == "") {
-            String version = IllegalStack
-                    .getPlugin()
-                    .getServer()
-                    .getClass()
-                    .getPackage()
-                    .getName()
-                    .replace(".", ",")
-                    .split(",")[3];
-
-
-            version = IllegalStack.getString(version);
-            if (version.equalsIgnoreCase("v1_15_R1")) {
-
-                version = IllegalStack.getPlugin().getServer().getVersion().split(" ")[2];
-                if (version.contains(" ")) {
-                    version = version.replace(")", "");
-                    version = version.replace(".", "_");
-                    String[] ver = version.split("_");
-                    version = "v" + ver[0] + "_" + ver[1] + "_R" + ver[2];
-                }
-
-            }
-
-            serverVersion = version;
-
+        if (serverVersion.isEmpty()) {
+            serverVersion = IllegalStack.detectServerVersion();
         }
         return serverVersion;
     }
@@ -1634,132 +1608,55 @@ public enum Protections {
 
     public boolean isRelevantToVersion(String serverVersion) {
 
-        if (serverVersion.contains("_")) {
-            serverVersion = serverVersion.replace("_", ".");
-        }
-        if (this.getVersion().isEmpty()) {
+        String tag = this.getVersion();
+        if (tag.isEmpty()) {
             return false; //must be a child node
         }
 
-        if (this.getVersion().contains("< 1.19")) {
-            return !serverVersion.contains("1.19");
+        if (tag.contains("ALL")) {
+            return true;
         }
 
-        if (this.getVersion().contains("< 1.18")) {
-            return !serverVersion.contains("1.18");
-        }
-
-        if (this.getVersion().contains("< 1.17")) {
-            return !serverVersion.contains("1.17");
-        }
-
-        if (this.getVersion().contains("< 1.15")) {
-            return !serverVersion.contains("1.15") && !serverVersion.contains("1.16") && !serverVersion.contains("1.17") && !serverVersion.contains("1.18")
-            		&& !serverVersion.contains("1.19");
-        }
-
-        if (this.getVersion().equalsIgnoreCase("1.14.4") && !serverVersion.contains("1.14.R4")) {
+        int[] server = parseVersionNumbers(serverVersion);
+        int[] target = parseVersionNumbers(tag.replace("<", "").replace(">", ""));
+        if (server == null || target == null) {
             return false;
         }
 
-        if (this.getVersion().equalsIgnoreCase("1.14.3") && !serverVersion.contains("1.14.R3")) {
+        int cmp = server[0] != target[0]
+                ? Integer.compare(server[0], target[0])
+                : Integer.compare(server[1], target[1]);
+
+        if (tag.contains("<")) {
+            return cmp < 0;
+        }
+        if (tag.contains(">")) {
+            return cmp >= 0; //historically "> x.y" always included x.y itself
+        }
+
+        //exact tags only apply to that major.minor release, three part
+        //tags (1.14.3 / 1.14.4) additionally pin the package revision
+        if (cmp != 0) {
             return false;
         }
+        return target[2] < 0 || target[2] == server[2];
+    }
 
-        if (this.getVersion().contains("ALL")) {
-            return true;
-        }
-
-        if (this.getVersion().equalsIgnoreCase("1.19") && serverVersion.contains("1.19")) {
-            return true;
-        }
-
-        if (this.getVersion().equalsIgnoreCase("1.18") && serverVersion.contains("1.18")) {
-            return true;
-        }
-
-        if (this.getVersion().equalsIgnoreCase("1.17") && serverVersion.contains("1.17")) {
-            return true;
-        }
-
-        if (this.getVersion().equalsIgnoreCase("1.16") && serverVersion.contains("1.16")) {
-            return true;
-        }
-
-        if (this.getVersion().equalsIgnoreCase("1.15") && serverVersion.contains("1.15")) {
-            return true;
-        }
-
-        if (this.getVersion().equalsIgnoreCase("1.14") && serverVersion.contains("1.14")) {
-            return true;
-        }
-
-        if (this.getVersion().contains("1.14") && serverVersion.contains("1.14")) {
-            return true;
-        }
-
-        if (this.getVersion().contains("1.15") && serverVersion.contains("1.15")) {
-            return true;
-        }
-
-        if (this.getVersion().contains("1.16") && serverVersion.contains("1.16")) {
-            return true;
-        }
-
-        if (this.getVersion().contains("1.17") && serverVersion.contains("1.17")) {
-            return true;
-        }
-
-        if (this.getVersion().contains("1.18") && serverVersion.contains("1.18")) {
-            return true;
-        }
-
-        if (this.getVersion().contains("1.19") && serverVersion.contains("1.19")) {
-            return true;
-        }
-
-        if (this.getVersion().contains("> 1.12")) {
-            if (serverVersion.contains("1.19") || serverVersion.contains("1.18") || serverVersion.contains("1.17") || serverVersion.contains("1.16") || serverVersion.contains("1.15") || serverVersion
-                    .contains("1.14") || serverVersion.contains("1.13") || serverVersion.contains("1.12")) {
-                return true;
+    //accepts "v1_14_R4", "26.1.2", "1.14", " 1.14.4" -> {major, minor, revision(-1 if absent)}
+    private static int[] parseVersionNumbers(String version) {
+        try {
+            String v = version.trim();
+            if (v.startsWith("v") || v.startsWith("V")) {
+                v = v.substring(1);
             }
+            String[] parts = v.replace("_", ".").replace("R", "").split("\\.");
+            int major = Integer.parseInt(parts[0].trim());
+            int minor = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 0;
+            int revision = parts.length > 2 ? Integer.parseInt(parts[2].trim()) : -1;
+            return new int[]{major, minor, revision};
+        } catch (Exception ignored) {
+            return null;
         }
-
-        if (this.getVersion().contains("> 1.9")) {
-            if (serverVersion.contains("1.19") || serverVersion.contains("1.18") || serverVersion.contains("1.17") || serverVersion.contains("1.16") || serverVersion.contains("1.15") || serverVersion
-                    .contains("1.14") || serverVersion.contains("1.13") || serverVersion.contains("1.12") || serverVersion.contains(
-                    "1.11") ||
-                    this.serverVersion.contains("1.10") || this.serverVersion.contains("1.9")) {
-                return true;
-            }
-        }
-
-        if (this.getVersion().contains("> 1.11")) {
-            if (serverVersion.contains("1.19") || serverVersion.contains("1.18") || serverVersion.contains("1.17") || serverVersion.contains("1.16") || serverVersion.contains("1.15") || serverVersion
-                    .contains("1.14") || serverVersion.contains("1.13") || serverVersion.contains("1.12") || serverVersion.contains(
-                    "1.11")) {
-                return true;
-            }
-        }
-        if (this.getVersion().contains("1.12")) {
-            if (serverVersion.contains("1.12")) {
-                return true;
-            }
-        }
-        if (this.getVersion().contains("1.13") && serverVersion.contains("1.13")) {
-            return true;
-        }
-
-        if (this.getVersion().contains("> 1.13")) {
-            return Material.matchMaterial("CAVE_AIR") != null;
-        }
-        if (this.getVersion().contains("< 1.13")) {
-            return Material.matchMaterial("CAVE_AIR") == null;
-        }
-
-
-        return false;
-
     }
 
     public boolean isVersionSpecific(String serverVersion) {
@@ -2400,14 +2297,20 @@ public enum Protections {
     public boolean isThirdPartyObject(Entity entity) {
 
         if (IllegalStack.getPlugin().getServer().getPluginManager().getPlugin("JetsMinions") != null) {
-            boolean minion = MinionAPI.isMinion(entity);
-            if (minion) {
-                return true;
-            } 
+            //JetsMinions is closed source and its jar is not available at build time,
+            //call MinionAPI.isMinion(Entity) reflectively instead
+            try {
+                Class<?> minionApi = Class.forName("me.jet315.minions.MinionAPI");
+                boolean minion = (boolean) minionApi.getMethod("isMinion", Entity.class).invoke(null, entity);
+                if (minion) {
+                    return true;
+                }
+            } catch (ReflectiveOperationException | LinkageError ignored) {
+            }
         }
         if(entity instanceof LivingEntity && SpigotMethods.isNPC((LivingEntity)entity))
         	return true;
-        
+
         return false;
     }
 

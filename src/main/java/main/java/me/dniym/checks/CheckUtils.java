@@ -11,6 +11,7 @@ import org.bukkit.Material;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Container;
 import org.bukkit.block.ShulkerBox;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
@@ -111,8 +112,9 @@ public class CheckUtils {
 
     public static boolean CheckEntireInventory(Inventory inv) {
 
-        for (int i = 0; i < inv.getContents().length; i++) {
-            ItemStack is = inv.getContents()[i];
+        //Inventory#getContents copies the backing array on every call, fetch it once
+        ItemStack[] contents = inv.getContents();
+        for (ItemStack is : contents) {
             if (is == null) {
                 continue;
             }
@@ -128,7 +130,9 @@ public class CheckUtils {
 
         }
 
-        if (!fListener.is18() && IllegalStack.hasStorage()) {
+        //storage contents only differ from the main contents for player inventories,
+        //rescanning them for plain containers doubles the work for nothing
+        if (!fListener.is18() && IllegalStack.hasStorage() && inv.getType() == InventoryType.PLAYER) {
             for (ItemStack is : inv.getStorageContents()) {
                 if (OverstackedItemCheck.CheckContainer(is, inv)) {
                     return true;

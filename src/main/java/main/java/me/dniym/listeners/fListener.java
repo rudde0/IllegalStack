@@ -26,6 +26,7 @@ import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.World.Environment;
@@ -294,11 +295,11 @@ public class fListener implements Listener {
             }
         }
 
-        if (!ver.contains("v1_14") && !ver.contains("v1_15") && !ver.contains("v1_16") && !ver.contains("v1_17") && !ver.contains("v1_18")) {
+        if (!IllegalStack.isAtLeast(1, 14)) {
             if (ver.contains("v1_13")) {
                 LOGGER.info("MC Version 1.13+ detected!");
 
-                blacklist.addAll(Tag.CARPETS.getValues());
+                addCarpetsToBlacklist();
                 blacklist.add(Material.matchMaterial("RAIL"));
 
                 pistonCheck.add(Material.matchMaterial("PISTON"));
@@ -327,11 +328,23 @@ public class fListener implements Listener {
             pistonCheck.add(Material.PISTON);
             pistonCheck.add(Material.MOVING_PISTON);
             blacklist.add(Material.RAIL);
-            blacklist.addAll(Tag.CARPETS.getValues());
+            addCarpetsToBlacklist();
             blacklist.add(Material.ACTIVATOR_RAIL);
             blacklist.add(Material.DETECTOR_RAIL);
 
             book = Material.WRITABLE_BOOK;
+        }
+    }
+
+    //Tag.CARPETS was removed from the API in modern versions (renamed to wool_carpets),
+    //resolve the tag by key so the same jar runs on both old and new servers
+    private void addCarpetsToBlacklist() {
+        Tag<Material> carpets = Bukkit.getTag(Tag.REGISTRY_BLOCKS, NamespacedKey.minecraft("wool_carpets"), Material.class);
+        if (carpets == null) {
+            carpets = Bukkit.getTag(Tag.REGISTRY_BLOCKS, NamespacedKey.minecraft("carpets"), Material.class);
+        }
+        if (carpets != null) {
+            blacklist.addAll(carpets.getValues());
         }
     }
 
@@ -1013,36 +1026,20 @@ public class fListener implements Listener {
 
         if (Protections.PreventHoppersToUnloadedChunks.isEnabled()) {
             if (e.getSource().getType() == InventoryType.HOPPER && e.getDestination().getType() == InventoryType.HOPPER) {
-                HopperMinecart hm = null;
-                HopperMinecart hm2 = null;
-                Hopper h = null;
-                Hopper h2 = null;
-                if (e.getSource().getHolder() instanceof HopperMinecart) {
-                    hm = (HopperMinecart) e.getSource().getHolder();
-                } else {
-                    h = (Hopper) e.getSource().getHolder();
-                }
-                if (e.getDestination().getHolder() instanceof HopperMinecart) {
-                    hm2 = (HopperMinecart) e.getDestination().getHolder();
-                } else {
-                    h2 = (Hopper) e.getDestination().getHolder();
-                }
-
-                Chunk c1;
-                Chunk c2;
-                if (hm != null) {
-                    c1 = hm.getLocation().getChunk();
-                } else {
-                    c1 = h.getChunk();
-                }
-
-                if (hm2 != null) {
-                    c2 = hm2.getLocation().getChunk();
-                } else {
-                    c2 = h2.getChunk();
-                }
-                if ((c1 != c2) && (!c1.isLoaded() || !c2.isLoaded())) {
-                    e.setCancelled(true);
+                //use the inventory locations directly, grabbing the holders here creates
+                //block state snapshots and Location#getChunk force loads the chunk we
+                //are about to test, both for every single hopper transfer
+                Location src = e.getSource().getLocation();
+                Location dst = e.getDestination().getLocation();
+                if (src != null && dst != null) {
+                    int srcX = src.getBlockX() >> 4;
+                    int srcZ = src.getBlockZ() >> 4;
+                    int dstX = dst.getBlockX() >> 4;
+                    int dstZ = dst.getBlockZ() >> 4;
+                    boolean sameChunk = src.getWorld() == dst.getWorld() && srcX == dstX && srcZ == dstZ;
+                    if (!sameChunk && (!src.getWorld().isChunkLoaded(srcX, srcZ) || !dst.getWorld().isChunkLoaded(dstX, dstZ))) {
+                        e.setCancelled(true);
+                    }
                 }
             }
         }

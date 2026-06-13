@@ -69,9 +69,8 @@ public class fTimer implements Runnable {
         
 
 
-        String version = IllegalStack.getPlugin().getServer().getClass().getPackage().getName().replace(".", ",")
-                .split(",")[3];
-        is1_8 = version.equalsIgnoreCase("v1_8_R3") || version.contains("v1_8");
+        String version = IllegalStack.getVersion();
+        is1_8 = version.contains("v1_8");
 
         if (is1_8) {
             LOGGER.info("Minecraft 1.8 detected not checking offhand slot for overstacked items.");
@@ -299,9 +298,11 @@ public class fTimer implements Runnable {
             this.nextScan = System.currentTimeMillis() + (this.scanDelay * 1000);
             //if(!Protections.RemoveOverstackedItems.isEnabled())
             //return;
+            boolean metaChecks = (Protections.RemoveUnbreakableFlag.isEnabled() && IllegalStack.hasUnbreakable())
+                    || Protections.RemoveCustomAttributes.isEnabled()
+                    || Protections.PreventInvalidPotions.isEnabled();
             for (Player p : plugin.getServer().getOnlinePlayers()) {
                 if (!is1_8) {
-                    p.getInventory().getItemInOffHand();
                     if (Protections.DisableInWorlds.getTxtSet().contains(p.getWorld().getName())) {
                         continue;
                     }
@@ -539,7 +540,7 @@ public class fTimer implements Runnable {
                     if (Protections.FixNegativeDurability.isEnabled()) {
                         NBTStuff.checkForNegativeDurability(is, p);
                     }
-                    if (is.hasItemMeta()) {
+                    if (metaChecks && is.hasItemMeta()) {
                         ItemMeta im = is.getItemMeta();
 
                         if (Protections.RemoveUnbreakableFlag.isEnabled() && IllegalStack.hasUnbreakable()) {

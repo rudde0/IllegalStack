@@ -18,7 +18,7 @@ repositories {
     }
     maven {
         name = "ProtocolLib"
-        url = uri("https://repo.dmulloy2.net/nexus/repository/public/")
+        url = uri("https://repo.dmulloy2.net/repository/public/")
     }
     maven {
         name = "Magic"
@@ -27,6 +27,10 @@ repositories {
     maven {
         name = "CodeMC"
         url = uri("https://repo.codemc.org/repository/maven-public/")
+    }
+    maven {
+        name = "NeetGames"
+        url = uri("https://nexus.neetgames.com/repository/maven-public/")
     }
     maven {
         name = "JitPack"
@@ -39,7 +43,7 @@ repositories {
 
 dependencies {
     compileOnly("org.spigotmc:spigot-api:1.19.2-R0.1-SNAPSHOT")
-    compileOnly("com.comphenix.protocol:ProtocolLib:4.7.0-SNAPSHOT")
+    compileOnly("com.comphenix.protocol:ProtocolLib:5.3.0")
     implementation("com.elmakers.mine.bukkit:MagicAPI:8.6")
     implementation("de.tr7zw:item-nbt-api-plugin:2.8.0")
     implementation("com.github.TheBusyBiscuit:Slimefun4:RC-30")
@@ -49,22 +53,14 @@ dependencies {
     
     implementation("fr.minuskube.inv:smart-invs:1.2.7")
     implementation("com.github.CraftingStore:MinecraftPlugin:master-SNAPSHOT")
-    compileOnly(":JetsMinions")
     compileOnlyApi("org.apache.logging.log4j:log4j-api:2.0.1")
     compileOnly("org.jetbrains:annotations:21.0.1")
     compileOnly("com.github.brcdev-minecraft:shopgui-api:3.0.0")
 }
 
-the<JavaPluginExtension>().toolchain {
-    languageVersion.set(JavaLanguageVersion.of(16))
-}
-
-configurations.all {
-    attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 16)
-}
-
 tasks.compileJava.configure {
-    options.release.set(8)
+    options.release.set(17)
+    options.encoding = "UTF-8"
 }
 
 version = "2.7.1"

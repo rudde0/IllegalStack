@@ -174,13 +174,16 @@ public class NBTStuff {
     }
 
     public static void checkForNegativeDurability(ItemStack is, Player p) {
-        if (is == null) {
+        //items without durability can never carry an out of range damage value,
+        //skip them before paying for the item meta copy
+        if (is == null || is.getType().getMaxDurability() <= 0 || !is.hasItemMeta()) {
             return;
         }
 
         if (IllegalStack.isHasAttribAPI()) {
-            if (is.hasItemMeta() && is.getItemMeta() instanceof Damageable) {
-                Damageable dmg = (Damageable) is.getItemMeta();
+            ItemMeta meta = is.getItemMeta();
+            if (meta instanceof Damageable) {
+                Damageable dmg = (Damageable) meta;
                 if (dmg.getDamage() > is.getType().getMaxDurability()) {
                     fListener.getLog().append(Msg.IllegalStackDurability.getValue(p, is), Protections.FixNegativeDurability);
                     dmg.setDamage(is.getType().getMaxDurability());
